@@ -43,30 +43,28 @@ app.get('/search', async (req, res) => {
 app.post('/image-search', async (req, res) => {
   const { base64, mediaType } = req.body;
   try {
-    const response = await axios.post('https://api.anthropic.com/v1/messages', {
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 50,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-          { type: 'text', text: 'What product is in this image? Reply with just the product name in 3-5 words, nothing else.' }
-        ]
-      }]
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01'
+    const response = await axios.post(
+      'https://api.imagga.com/v2/tags',
+      `image_base64=${encodeURIComponent(base64)}`,
+      {
+        auth: {
+          username: process.env.IMAGGA_API_KEY,
+          password: process.env.IMAGGA_API_SECRET
+        },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
       }
-    });
-    const product = response.data.content[0].text;
+    );
+    const tags = response.data.result.tags;
+    const product = tags.slice(0, 3).map(t => t.tag.en).join(' ');
     res.json({ product });
-  }  catch (err) {
+  } catch (err) {
     console.error(err.response?.data || err.message);
     res.status(500).json({ error: err.response?.data || err.message });
   }
 });
+ 
 
 app.listen(process.env.PORT || 5000, () => {
   console.log(`Server running on port ${process.env.PORT || 5000}`);
