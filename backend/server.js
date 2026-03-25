@@ -38,3 +38,31 @@ app.get('/search', async (req, res) => {
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);
 });
+
+app.post('/image-search', async (req, res) => {
+  const { base64, mediaType } = req.body;
+  try {
+    const response = await axios.post('https://api.anthropic.com/v1/messages', {
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 50,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+          { type: 'text', text: 'What product is in this image? Reply with just the product name in 3-5 words, nothing else.' }
+        ]
+      }]
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01'
+      }
+    });
+    const product = response.data.content[0].text;
+    res.json({ product });
+  } catch (err) {
+    console.error(err.response?.data || err.message);
+    res.status(500).json({ error: 'Image search failed' });
+  }
+});
